@@ -1,0 +1,41 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+      POSTGRES_DB: postgres
+    volumes:
+      - odoo-db-data:/var/lib/postgresql/data
+    networks:
+      - odoo-net
+
+  odoo:
+    build: .
+    image: odoo_dockerized:local
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: odoo
+      DB_PASSWORD: odoo
+      DB_NAME: postgres
+      AUTO_INSTALL: "true"
+      AUTO_UPDATE: "true"
+      DEV_RELOAD: "true"
+    ports:
+      - "8069:8069"
+    volumes:
+      - odoo-data:/var/lib/odoo
+      - ./extra-addons:/mnt/extra-addons
+    networks:
+      - odoo-net
+
+networks:
+  odoo-net:
+
+volumes:
+  odoo-data:
+  odoo-db-data:
