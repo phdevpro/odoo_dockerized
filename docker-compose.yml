@@ -16,6 +16,7 @@ services:
     image: odoo_dockerized:local
     depends_on:
       - db
+    entrypoint: ["/bin/bash", "/entrypoint.sh"]
     environment:
       DB_HOST: db
       DB_PORT: 5432
