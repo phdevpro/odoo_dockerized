@@ -68,8 +68,8 @@ COPY wait-for-psql.py /usr/local/bin/wait-for-psql.py
 RUN chown odoo /etc/odoo/odoo.conf && \
     mkdir -p /mnt/extra-addons && \
     chown -R odoo /mnt/extra-addons && \
-    sed -i 's/\r$//' /entrypoint.sh && \
-    chmod +x /entrypoint.sh
+    sed -i 's/\r$//' /entrypoint.sh /usr/local/bin/wait-for-psql.py && \
+    chmod +x /entrypoint.sh /usr/local/bin/wait-for-psql.py
 
 VOLUME ["/var/lib/odoo", "/mnt/extra-addons"]
 
