@@ -1,4 +1,3 @@
-version: "3.8"
 services:
   db:
     image: postgres:15
@@ -10,16 +9,23 @@ services:
       - odoo-db-data:/var/lib/postgresql/data
     networks:
       - odoo-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo -d postgres -h 127.0.0.1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   odoo:
     build: .
     image: odoo_dockerized:local
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     entrypoint: ["/bin/bash", "/entrypoint.sh"]
     environment:
+      # Make sure your entrypoint writes these into odoo.conf (db_host, db_port, db_user, db_password)
       DB_HOST: db
-      DB_PORT: 5432
+      DB_PORT: "5432"
       DB_USER: odoo
       DB_PASSWORD: odoo
       DB_NAME: postgres
@@ -27,15 +33,40 @@ services:
       AUTO_UPDATE: "true"
       DEV_RELOAD: "true"
     ports:
-      - "8069:8069"
+      - "8069:8069"   # optional if Traefik terminates TLS
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik
+
+  # --- Main Odoo web (8069)
+      - traefik.http.routers.odoo.rule=Host(`demo-odoo.pdvp.ws`)
+      - traefik.http.routers.odoo.entrypoints=websecure
+      - traefik.http.routers.odoo.tls=true
+      - traefik.http.routers.odoo.tls.certresolver=letsencrypt
+      - traefik.http.routers.odoo.service=odoo
+      - traefik.http.services.odoo.loadbalancer.server.port=8069
+
+  # --- Longpolling (8072)
+      - traefik.http.routers.odoo-longpoll.rule=Host(`demo-odoo.pdvp.ws`) && PathPrefix(`/longpolling`)
+      - traefik.http.routers.odoo-longpoll.entrypoints=websecure
+      - traefik.http.routers.odoo-longpoll.tls=true
+      - traefik.http.routers.odoo-longpoll.tls.certresolver=letsencrypt
+      - traefik.http.routers.odoo-longpoll.service=odoo-longpoll
+      - traefik.http.services.odoo-longpoll.loadbalancer.server.port=8072
+
     volumes:
       - odoo-data:/var/lib/odoo
       - ./extra-addons:/mnt/extra-addons
     networks:
       - odoo-net
+      - traefik
 
 networks:
+  # This must match the actual external Traefik network name
+  traefik:
+    external: true
   odoo-net:
+    driver: bridge
 
 volumes:
   odoo-data:
